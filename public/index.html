@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PesanAja - Premium Coffee</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { background-color: #FDF8F5; font-family: 'Plus Jakarta Sans', sans-serif; color: #3E2723; scroll-behavior: smooth; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .active-cat { background-color: #6F4E37 !important; color: white !important; box-shadow: 0 4px 12px rgba(111, 78, 55, 0.3); }
+        @keyframes slideUp { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .animate-pop { animation: slideUp 0.3s ease-out; }
+    </style>
+</head>
+<body class="pb-24">
+    <div id="toast" class="fixed top-20 left-1/2 -translate-x-1/2 z-[100] hidden">
+        <div class="bg-[#3E2723] text-white px-6 py-3 rounded-full shadow-2xl text-sm font-bold flex items-center gap-2">
+            <span>✅</span> Berhasil ditambah
+        </div>
+    </div>
+
+    <div class="max-w-6xl mx-auto px-4">
+        <header class="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-orange-100 p-4 -mx-4 px-8">
+            <div class="flex justify-between items-center mb-4">
+                <div>
+                    <h1 class="text-2xl font-black text-[#3E2723]">Pesan<span class="text-[#6F4E37]">Aja</span></h1>
+                    <p class="text-[10px] text-orange-400 font-bold tracking-widest uppercase">Digital Menu v2.0</p>
+                </div>
+                <button onclick="toggleCart()" class="relative p-3 bg-[#6F4E37] rounded-2xl text-white shadow-lg active:scale-90 transition-all">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                    </svg>
+                    <span id="cartCount" class="absolute -top-1 -right-1 bg-orange-500 text-[10px] w-5 h-5 flex items-center justify-center rounded-full font-bold border-2 border-white">0</span>
+                </button>
+            </div>
+            
+            <div class="relative">
+                <span class="absolute inset-y-0 left-3 flex items-center text-slate-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                </span>
+                <input type="text" id="searchInput" oninput="render()" placeholder="Mau minum apa hari ini?..." 
+                    class="w-full pl-10 pr-4 py-3.5 bg-orange-50/50 border border-orange-100 rounded-2xl outline-none focus:ring-2 focus:ring-[#6F4E37]/20 transition-all">
+            </div>
+        </header>
+
+        <div class="flex gap-2 overflow-x-auto py-6 no-scrollbar">
+            <button onclick="filterCat('all')" id="cat-all" class="cat-btn active-cat px-6 py-2.5 bg-white border border-orange-100 rounded-full text-xs font-bold whitespace-nowrap transition-all">Semua</button>
+            <div id="catList" class="flex gap-2"></div>
+        </div>
+
+        <div id="productList" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"></div>
+    </div>
+
+    <div id="cartModal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="toggleCart()"></div>
+        <div class="absolute right-0 top-0 h-full w-full max-w-sm bg-white p-6 shadow-2xl flex flex-col animate-pop">
+            <div class="flex justify-between items-center mb-8 border-b pb-4">
+                <h2 class="text-xl font-bold italic text-[#3E2723]">Detail Order</h2>
+                <button onclick="toggleCart()" class="text-slate-400 bg-slate-100 p-2 rounded-full">✕</button>
+            </div>
+            
+            <div id="cartItems" class="flex-grow overflow-y-auto space-y-4 no-scrollbar"></div>
+            
+            <div class="mt-6 border-t pt-6 space-y-4">
+                <div class="flex justify-between items-end mb-2">
+                    <span class="text-slate-400 text-sm">Total Pembayaran:</span>
+                    <span id="cartTotal" class="text-2xl font-black text-[#6F4E37]">Rp0</span>
+                </div>
+                <div class="space-y-2">
+                    <input id="name" placeholder="Atas Nama Siapa?" class="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-[#6F4E37] text-sm font-bold">
+                    <input id="addr" placeholder="Nomor Meja Berapa?" class="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-[#6F4E37] text-sm font-bold">
+                </div>
+                <button onclick="checkout()" class="w-full bg-[#6F4E37] text-white py-4 rounded-2xl font-bold shadow-xl shadow-[#6F4E37]/30 active:scale-95 transition-all">
+                    Kirim Pesanan (WhatsApp)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let products = [], cart = [], categories = [], activeCat = 'all';
+        const WA_NUMBER = "6285752214806";
+
+        async function load() {
+            try {
+                const res = await fetch('/api/products');
+                const json = await res.json();
+                products = json.data;
+                categories = json.categories;
+                renderCats();
+                render();
+            } catch (e) { alert("Koneksi gagal"); }
+        }
+
+        function renderCats() {
+            document.getElementById('catList').innerHTML = categories.map(c => 
+                `<button onclick="filterCat(${c.id})" id="cat-${c.id}" class="cat-btn px-6 py-2.5 bg-white border border-orange-100 text-slate-500 rounded-full text-xs font-bold whitespace-nowrap transition-all hover:bg-orange-50">${c.name}</button>`
+            ).join('');
+        }
+
+        function filterCat(id) {
+            activeCat = id;
+            document.querySelectorAll('.cat-btn').forEach(btn => btn.classList.remove('active-cat'));
+            document.getElementById('cat-' + (id === 'all' ? 'all' : id)).classList.add('active-cat');
+            render();
+        }
+
+        function showToast() {
+            const t = document.getElementById('toast');
+            t.classList.remove('hidden');
+            setTimeout(() => t.classList.add('hidden'), 1500);
+        }
+
+        function render() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            const container = document.getElementById('productList');
+            
+            const filtered = products.filter(p => {
+                const matchCat = activeCat === 'all' || p.categoryId == activeCat;
+                const matchSearch = p.name.toLowerCase().includes(query);
+                return matchCat && matchSearch;
+            });
+
+            if(filtered.length === 0) {
+                container.innerHTML = `<div class="col-span-2 text-center py-20 text-slate-400">Menu tidak ditemukan...</div>`;
+                return;
+            }
+
+            container.innerHTML = filtered.map(p => {
+                const isSoldOut = p.stock <= 0;
+                return `
+                <div class="bg-white p-2.5 rounded-[28px] shadow-sm border border-orange-50 flex flex-col h-full group transition-all hover:shadow-lg">
+                    <div class="relative aspect-square w-full rounded-[22px] overflow-hidden mb-3 bg-slate-100">
+                        ${isSoldOut ? '<div class="absolute inset-0 z-20 bg-black/50 flex items-center justify-center text-white font-black text-xs uppercase tracking-widest">Habis</div>' : ''}
+                        <img src="${p.imageUrl}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ${isSoldOut ? 'grayscale' : ''}">
+                    </div>
+                    <div class="px-1 flex-grow">
+                        <div class="flex justify-between items-start gap-1">
+                            <h3 class="font-bold text-sm text-slate-800 line-clamp-1">${p.name}</h3>
+                        </div>
+                        <p class="text-[10px] text-slate-400 line-clamp-2 mt-1 leading-relaxed">${p.description || 'Pilihan terbaik untuk harimu'}</p>
+                        <p class="text-[#6F4E37] font-black text-base mt-2">Rp${Number(p.price).toLocaleString()}</p>
+                    </div>
+                    <button 
+                        onclick="${isSoldOut ? '' : `add(${p.id})`}" 
+                        class="w-full mt-3 py-3 rounded-xl text-[11px] font-bold transition-all active:scale-95 ${isSoldOut ? 'bg-slate-100 text-slate-300 cursor-not-allowed' : 'bg-orange-50 text-[#6F4E37] hover:bg-[#6F4E37] hover:text-white'}"
+                        ${isSoldOut ? 'disabled' : ''}>
+                        ${isSoldOut ? 'Sold Out' : '+ Tambah Pesanan'}
+                    </button>
+                </div>`;
+            }).join('');
+        }
+
+        function add(id) {
+            const p = products.find(x => x.id === id);
+            const item = cart.find(x => x.id === id);
+            if(item) item.qty++; else cart.push({...p, qty: 1});
+            updateCartUI();
+            showToast();
+        }
+
+        function updateCartUI() {
+            const total = cart.reduce((a, b) => a + (b.price * b.qty), 0);
+            document.getElementById('cartCount').innerText = cart.reduce((a, b) => a + b.qty, 0);
+            document.getElementById('cartTotal').innerText = `Rp${total.toLocaleString()}`;
+            
+            if(cart.length === 0) {
+                document.getElementById('cartItems').innerHTML = `<div class="text-center py-10 text-slate-300 text-sm">Keranjang masih kosong</div>`;
+                return;
+            }
+
+            document.getElementById('cartItems').innerHTML = cart.map(i => `
+                <div class="flex items-center gap-4 bg-orange-50/50 p-3 rounded-2xl border border-orange-100">
+                    <img src="${i.imageUrl}" class="w-14 h-14 object-cover rounded-xl shadow-sm">
+                    <div class="flex-grow">
+                        <h4 class="text-xs font-bold text-slate-700">${i.name}</h4>
+                        <p class="text-xs text-[#6F4E37] font-black">Rp${Number(i.price).toLocaleString()}</p>
+                    </div>
+                    <div class="flex items-center gap-3 bg-white px-2 py-1 rounded-full border shadow-sm">
+                        <button onclick="changeQty(${i.id}, -1)" class="w-6 h-6 flex items-center justify-center font-bold text-slate-400">-</button>
+                        <span class="text-[11px] font-black">${i.qty}</span>
+                        <button onclick="changeQty(${i.id}, 1)" class="w-6 h-6 flex items-center justify-center font-bold text-[#6F4E37]">+</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function changeQty(id, delta) {
+            const item = cart.find(x => x.id === id);
+            item.qty += delta;
+            if(item.qty <= 0) cart = cart.filter(x => x.id !== id);
+            updateCartUI();
+        }
+
+        function toggleCart() { document.getElementById('cartModal').classList.toggle('hidden'); }
+
+        async function checkout() {
+            const name = document.getElementById('name').value;
+            const addr = document.getElementById('addr').value;
+            if(!name || !addr || cart.length === 0) return alert('Lengkapi data pesanan dulu ya!');
+            
+            const res = await fetch('/api/orders', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ customerName: name, address: addr, items: cart.map(i => ({ productId: i.id, quantity: i.qty })) })
+            });
+            const data = await res.json();
+            if(data.success) {
+                const total = cart.reduce((a,b)=>a+(b.price*b.qty),0);
+                const text = `*HALO ADMIN, ADA PESANAN BARU!*%0A--------------------------%0A👤 *Nama:* ${name}%0A📍 *Meja:* ${addr}%0A%0A*MENU:*%0A${cart.map(i => `- ${i.name} (x${i.qty})`).join('%0A')}%0A%0A*TOTAL: Rp${total.toLocaleString()}*%0A--------------------------%0AMohon diproses ya Min!`;
+                window.open(`https://wa.me/${WA_NUMBER}?text=${text}`);
+                location.reload();
+            }
+        }
+        load();
+    </script>
+</body>
+</html>

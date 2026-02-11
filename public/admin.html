@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - PesanAja</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>body { background-color: #F8FAFC; font-family: 'Plus Jakarta Sans', sans-serif; }</style>
+</head>
+<body class="p-4 md:p-10">
+    <div class="max-w-6xl mx-auto">
+        <header class="flex justify-between items-center mb-10">
+            <div>
+                <h1 class="text-3xl font-black text-[#3E2723]">Admin <span class="text-[#6F4E37]">Control</span></h1>
+                <p class="text-slate-400 text-sm">Kelola menu dan pesanan tokomu</p>
+            </div>
+            <button onclick="localStorage.clear(); location.reload();" class="bg-red-50 text-red-500 px-6 py-2 rounded-xl font-bold text-xs hover:bg-red-500 hover:text-white transition-all">Logout</button>
+        </header>
+
+        <div class="bg-white p-8 rounded-[32px] shadow-sm border border-slate-100 mb-10">
+            <h2 id="formTitle" class="text-lg font-bold mb-6 flex items-center gap-2">
+                <span class="w-2 h-6 bg-[#6F4E37] rounded-full"></span> Tambah / Edit Menu
+            </h2>
+            <form id="productForm" class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <input type="hidden" id="editId">
+                <div class="space-y-1">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase ml-1">Nama Menu</label>
+                    <input type="text" name="name" id="name" class="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-[#6F4E37]" required>
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase ml-1">Harga</label>
+                    <input type="number" name="price" id="price" class="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-[#6F4E37]" required>
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase ml-1">Stok</label>
+                    <input type="number" name="stock" id="stock" class="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-[#6F4E37]" required>
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase ml-1">Kategori</label>
+                    <select name="categoryId" id="catId" class="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-[#6F4E37]" required></select>
+                </div>
+                <div class="md:col-span-2">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase ml-1">Deskripsi</label>
+                    <textarea name="description" id="desc" class="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-[#6F4E37]"></textarea>
+                </div>
+                <div class="md:col-span-2">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase ml-1">Foto Menu (Biarkan kosong jika tidak diganti)</label>
+                    <input type="file" name="image" id="image" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-[#6F4E37] file:text-white">
+                </div>
+                <div class="md:col-span-2 flex gap-3 mt-2">
+                    <button type="submit" class="flex-grow bg-[#6F4E37] text-white py-4 rounded-2xl font-bold shadow-lg active:scale-95 transition-all">Simpan Menu</button>
+                    <button type="button" onclick="resetForm()" class="px-8 py-4 bg-slate-100 text-slate-500 rounded-2xl font-bold">Batal</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="bg-white rounded-[32px] shadow-sm border border-slate-100 overflow-hidden">
+            <table class="w-full text-left text-sm">
+                <thead class="bg-slate-50">
+                    <tr>
+                        <th class="p-6">Produk</th>
+                        <th class="p-6">Harga</th>
+                        <th class="p-6">Stok</th>
+                        <th class="p-6">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody id="productTable" class="divide-y divide-slate-50"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('token');
+        if(!token) window.location.href = 'login.html';
+        let allProds = [];
+
+        async function init() {
+            const res = await fetch('/api/products');
+            const json = await res.json();
+            allProds = json.data;
+            document.getElementById('catId').innerHTML = json.categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+            renderTable();
+        }
+
+        function renderTable() {
+            document.getElementById('productTable').innerHTML = allProds.map(p => `
+                <tr class="hover:bg-slate-50">
+                    <td class="p-6 flex items-center gap-4">
+                        <img src="${p.imageUrl}" class="w-12 h-12 object-cover rounded-xl">
+                        <span class="font-bold">${p.name}</span>
+                    </td>
+                    <td class="p-6">Rp${Number(p.price).toLocaleString()}</td>
+                    <td class="p-6">${p.stock}</td>
+                    <td class="p-6">
+                        <button onclick="edit(${p.id})" class="text-blue-500 font-bold mr-4">Edit</button>
+                        <button onclick="del(${p.id})" class="text-red-400 font-bold">Hapus</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        document.getElementById('productForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('editId').value;
+            const formData = new FormData(e.target);
+            
+            const url = id ? `/api/products/${id}` : '/api/products';
+            const method = id ? 'PUT' : 'POST';
+
+            try {
+                const res = await fetch(url, {
+                    method: method,
+                    headers: { 'Authorization': 'Bearer ' + token },
+                    body: formData
+                });
+                
+                const result = await res.json();
+                if(result.success) {
+                    alert("Berhasil!");
+                    resetForm();
+                    init();
+                } else {
+                    alert("Gagal: " + result.message);
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Terjadi kesalahan sistem");
+            }
+        };
+
+        function edit(id) {
+            const p = allProds.find(x => x.id === id);
+            document.getElementById('editId').value = p.id;
+            document.getElementById('name').value = p.name;
+            document.getElementById('price').value = p.price;
+            document.getElementById('stock').value = p.stock;
+            document.getElementById('catId').value = p.categoryId;
+            document.getElementById('desc').value = p.description || '';
+            document.getElementById('formTitle').innerHTML = `Edit Menu: ${p.name}`;
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function resetForm() {
+            document.getElementById('productForm').reset();
+            document.getElementById('editId').value = "";
+            document.getElementById('formTitle').innerText = "Tambah Menu Baru";
+        }
+
+        async function del(id) {
+            if(!confirm('Hapus menu ini?')) return;
+            await fetch(`/api/products/${id}`, { 
+                method: 'DELETE', 
+                headers: { 'Authorization': 'Bearer ' + token } 
+            });
+            init();
+        }
+
+        init();
+    </script>
+</body>
+</html>
